@@ -216,3 +216,16 @@ textarea:focus {
 .success-message a:hover {
   text-decoration: underline;
 }
+
+/* --- GIF AT BOTTOM CORNER --- */
+.bottom-gif {
+  position: absolute;
+  bottom: 20px;
+  left: 20px; /* <--- CHANGED TO LEFT */
+  width: fit-content;
+  height: 200px;
+  /* border-radius: 50%; */
+  object-fit: cover;
+  opacity: 0.8; 
+  pointer-events: none; 
+}

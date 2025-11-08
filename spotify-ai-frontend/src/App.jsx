@@ -147,6 +147,12 @@ function App() {
                 </a>
               </div>
             )}
+
+<img
+              src="/sponge-unscreen.gif"
+              alt="Music Visual"
+              className="bottom-gif" 
+            />
           </div>
           // ------------------------------------------------------
         )}
