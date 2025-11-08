@@ -24,7 +24,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 // const REDIRECT_URI = 'http://127.0.0.1:8000/callback';
 const REDIRECT_URI = 'https://spotify-gpt-wrapper.onrender.com/callback';
 // const FRONTEND_URI = 'http://127.0.0.1:5173'; // Your React app's address
-const FRONTEND_URI = 'https://spotify-gpt-wrapper.onrender.com';
+const FRONTEND_URI = 'https://spotify-gpt-wrapper.vercel.app';
 
 const stateKey = 'spotify_auth_state';
 
