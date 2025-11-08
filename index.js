@@ -1,6 +1,6 @@
 // 1. IMPORT LIBRARIES
 import express from 'express';
-import axios from 'axios';
+import { default as axios } from 'axios';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
