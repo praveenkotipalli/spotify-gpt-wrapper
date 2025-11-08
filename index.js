@@ -13,7 +13,7 @@ const app = express();
 // 3. SET UP MIDDLEWARE
 app.use(express.json()); // To parse JSON bodies from your React app
 app.use(cors({
-  origin: 'http://127.0.0.1:5173' // Allow your React frontend to make requests
+  origin: 'https://spotify-gpt-wrapper.vercel.app/' // Allow your React frontend to make requests
 }));
 app.use(cookieParser()); // To parse cookies for the auth state
 
@@ -21,8 +21,10 @@ app.use(cookieParser()); // To parse cookies for the auth state
 const SPOTIFY_CLIENT_ID = process.env.SPOTIFY_CLIENT_ID;
 const SPOTIFY_CLIENT_SECRET = process.env.SPOTIFY_CLIENT_SECRET;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const REDIRECT_URI = 'http://127.0.0.1:8000/callback';
-const FRONTEND_URI = 'http://127.0.0.1:5173'; // Your React app's address
+// const REDIRECT_URI = 'http://127.0.0.1:8000/callback';
+const REDIRECT_URI = 'https://spotify-gpt-wrapper-zyw9.vercel.app/callback';
+// const FRONTEND_URI = 'http://127.0.0.1:5173'; // Your React app's address
+const FRONTEND_URI = 'https://spotify-gpt-wrapper.vercel.app';
 
 const stateKey = 'spotify_auth_state';
 
