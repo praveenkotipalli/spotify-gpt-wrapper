@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from 'axios'; // <-- ADDED
 import "./App.css";
 
-const BACKEND_URI = "https://spotify-gpt-wrapper-zyw9.vercel.app";
+const BACKEND_URI = "https://spotify-gpt-wrapper.onrender.com";
 
 function App() {
   const [accessToken, setAccessToken] = useState(localStorage.getItem('spotify_token') || "");
