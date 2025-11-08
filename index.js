@@ -13,7 +13,7 @@ const app = express();
 // 3. SET UP MIDDLEWARE
 app.use(express.json()); // To parse JSON bodies from your React app
 app.use(cors({
-  origin: 'https://spotify-gpt-wrapper.vercel.app/' // Allow your React frontend to make requests
+  origin: 'https://spotify-gpt-wrapper.vercel.app' // Allow your React frontend to make requests
 }));
 app.use(cookieParser()); // To parse cookies for the auth state
 
