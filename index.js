@@ -109,7 +109,6 @@ app.get('/callback', async (req, res) => {
 
 // 7. ENDPOINT 3: /create-playlist (The "Magic" Wrapper Endpoint)
 app.post('/create-playlist', async (req, res) => {
-  // Get the prompt and the token from the React app's request
   const { prompt, accessToken } = req.body;
 
   if (!prompt || !accessToken) {
@@ -117,76 +116,94 @@ app.post('/create-playlist', async (req, res) => {
   }
 
   try {
-    // --- PART 1: Talk to Gemini AI ---
+    // --- PART 1: Talk to Gemini AI (with graceful fallback) ---
     console.log('Asking AI for search queries...');
-    const aiPrompt = `You are a Spotify playlist assistant. A user wants a playlist for "${prompt}". Based on this, generate a list of 5 specific Spotify search queries. Return your answer ONLY as a valid JSON array of strings. Do not include any other text, just the JSON array.`;
-
-    const geminiResponse = await axios.post(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-001:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        "contents": [{ "parts": [{ "text": aiPrompt }] }]
-      }
-    );
-
-    const responseText = geminiResponse.data.candidates[0].content.parts[0].text;
     let searchQueries;
 
-    try {
-      // The AI response might have ```json ... ``` tags, so let's clean it.
-      const cleanedResponse = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
-      searchQueries = JSON.parse(cleanedResponse);
-      console.log('AI generated queries:', searchQueries);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', responseText);
-      return res.status(500).json({ error: 'AI did not return valid JSON.' });
+    if (!GEMINI_API_KEY) {
+      console.warn('GEMINI_API_KEY is not set – falling back to simple search queries.');
+      searchQueries = [
+        `${prompt} playlist`,
+        `top songs for ${prompt}`,
+        `${prompt} hits`,
+        `${prompt} mix`,
+        `${prompt} vibes`
+      ];
+    } else {
+      try {
+        const aiPrompt = `You are a Spotify playlist assistant. A user wants a playlist for "${prompt}". Based on this, generate a list of 5 specific Spotify search queries. Return your answer ONLY as a valid JSON array of strings. Do not include any other text, just the JSON array.`;
+
+        // Use older, cheaper/free Gemini model
+        const geminiResponse = await axios.post(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          {
+            "contents": [{ "parts": [{ "text": aiPrompt }] }]
+          }
+        );
+
+        const responseText = geminiResponse.data.candidates[0].content.parts[0].text;
+
+        try {
+          const cleanedResponse = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+          searchQueries = JSON.parse(cleanedResponse);
+          console.log('AI generated queries:', searchQueries);
+        } catch (parseError) {
+          console.error('Failed to parse AI response, falling back to simple queries:', responseText);
+          searchQueries = [
+            `${prompt} playlist`,
+            `top songs for ${prompt}`,
+            `${prompt} hits`,
+            `${prompt} mix`,
+            `${prompt} vibes`
+          ];
+        }
+      } catch (geminiError) {
+        console.error('Gemini API error, falling back to simple queries:', geminiError.response ? geminiError.response.data : geminiError.message);
+        searchQueries = [
+          `${prompt} playlist`,
+          `top songs for ${prompt}`,
+          `${prompt} hits`,
+          `${prompt} mix`,
+          `${prompt} vibes`
+        ];
+      }
     }
 
     // --- PART 2: Search Spotify for songs ---
     console.log('Searching Spotify for tracks...');
     const searchPromises = searchQueries.map(query =>
+      // --- FIX: REAL Spotify Search URL ---
       axios.get('https://api.spotify.com/v1/search', {
         headers: { 'Authorization': `Bearer ${accessToken}` },
         params: {
           q: query,
           type: 'track',
-          limit: 5 // Get 5 songs per search query
+          limit: 1 // Keep limit low to avoid rate limits
         }
       })
     );
 
     const searchResults = await Promise.all(searchPromises);
 
-    // Collect all the track URIs (e.g., "spotify:track:123...")
     const trackUris = searchResults
-      .flatMap(result => result.data.tracks.items) // Get all tracks from all results
-      .map(track => track.uri); // Get just the URI
+      .flatMap(result => result.data.tracks.items)
+      .map(track => track.uri);
 
     if (trackUris.length === 0) {
       return res.status(404).json({ error: 'No songs found for that prompt.' });
     }
 
     // --- PART 3: Create the Playlist ---
-    // --- PART 3: Create the Playlist ---
     console.log('Creating the playlist...');
 
-    // --- NEW LOGS TO DEBUG ---
-    console.log('Using Access Token:', accessToken.substring(0, 10) + '...');
-    console.log('Attempting to get user ID...');
-    // --- END NEW LOGS ---
-
-    // First, get the user's ID
+    // --- FIX: REAL Spotify Me URL ---
     const userResponse = await axios.get('https://api.spotify.com/v1/me', {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
 
-    // --- NEW LOGS TO DEBUG ---
-    // If the code reaches here, the /me call worked.
-    console.log('Successfully got user ID:', userResponse.data.id);
-    // --- END NEW LOGS ---
-
     const userId = userResponse.data.id;
 
-    // Second, create the new (empty) playlist
+    // --- FIX: REAL Spotify Create Playlist URL ---
     const createPlaylistResponse = await axios.post(
       `https://api.spotify.com/v1/users/${userId}/playlists`,
       {
@@ -206,8 +223,9 @@ app.post('/create-playlist', async (req, res) => {
     console.log('Created playlist:', newPlaylist.name);
 
     // --- PART 4: Add songs to the playlist ---
-    // --- PART 4: Add songs to the playlist ---
     console.log('Adding tracks to the playlist...');
+    
+    // --- FIX: REAL Spotify Add Tracks URL ---
     await axios.post(
       `https://api.spotify.com/v1/playlists/${newPlaylist.id}/tracks`,
       {
@@ -216,26 +234,25 @@ app.post('/create-playlist', async (req, res) => {
       {
         headers: { 
           'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json' // <--- THE FIX
+          'Content-Type': 'application/json'
         }
       }
     );
 
-    // --- PART 5: Send success response to React ---
     res.json({
       message: 'Playlist created successfully!',
-      playlistUrl: newPlaylist.external_urls.spotify // Send the URL back to the frontend
+      playlistUrl: newPlaylist.external_urls.spotify
     });
 
   } catch (error) {
     console.error('An error occurred:', error.response ? error.response.data : error.message);
-    // Handle expired token error
     if (error.response && error.response.status === 401) {
       return res.status(401).json({ error: 'Spotify token expired.' });
     }
     return res.status(500).json({ error: 'An internal server error occurred.' });
   }
 });
+
 
 // 8. START THE SERVER
 const PORT = 8000;
